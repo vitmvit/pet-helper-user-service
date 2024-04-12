@@ -1,0 +1,167 @@
+[
+  {
+    "_id": {
+      "$oid": "660daccb4853be52971c0daf"
+    },
+    "login": "support1@mail.com",
+    "password": "$2a$10$m6Co2AL9e./9RJcpKt0AYO9giHC245L/sgoenPLWgm9GjK3oNhnXG",
+    "role": "SUPPORT",
+    "createDate": {
+      "$date": "2024-04-03T19:23:55.703Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-08T22:10:23.148Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dacd54853be52971c0db0"
+    },
+    "login": "support2@mail.com",
+    "password": "$2a$10$9K36ii.tx8yQEvbTV7O45.zEyg4VUfmzxFX03UfKDQODr1hYeBbKy",
+    "role": "SUPPORT",
+    "createDate": {
+      "$date": "2024-04-03T19:24:05.459Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-03T19:24:05.459Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dacda4853be52971c0db1"
+    },
+    "login": "support3@mail.com",
+    "password": "$2a$10$htsb9n5TpZIG/4Nf2Qkdee/aU8qvfcL9dKJJfod74.sQ1WPzsLpja",
+    "role": "SUPPORT",
+    "createDate": {
+      "$date": "2024-04-03T19:24:10.378Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-03T19:24:10.378Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dacdf4853be52971c0db2"
+    },
+    "login": "support4@mail.com",
+    "password": "$2a$10$Kiy3OQ2A8ddCYiphCgSU9.iMUHAn4auTaS.zj.B9BmWaYJD962ZR6",
+    "role": "SUPPORT",
+    "createDate": {
+      "$date": "2024-04-03T19:24:15.383Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-03T19:24:15.383Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dace44853be52971c0db3"
+    },
+    "login": "support5@mail.com",
+    "password": "$2a$10$/tzKcihg4Us/4VtnrOIfC.cS9.9jCU9bksleCxTr8daSCTocovjbe",
+    "role": "SUPPORT",
+    "createDate": {
+      "$date": "2024-04-03T19:24:20.872Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-03T19:24:20.872Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dacf24853be52971c0db4"
+    },
+    "login": "admin1@mail.com",
+    "password": "$2a$10$ComLyUmQFR2wg.6w7uWlWeEnLoC23OoMhfg5XUm1E0DKTYn3n6tyi",
+    "role": "ADMIN",
+    "createDate": {
+      "$date": "2024-04-03T19:24:34.519Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-11T21:51:00.726Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dacf84853be52971c0db5"
+    },
+    "login": "admin2@mail.com",
+    "password": "$2a$10$iuaFNHrpSWVfWeH7bIGCyuf1URY8RDopXP1/tlf7DSzRQd6Xp.hLe",
+    "role": "ADMIN",
+    "createDate": {
+      "$date": "2024-04-03T19:24:40.295Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-03T19:24:40.295Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dacfc4853be52971c0db6"
+    },
+    "login": "admin3@mail.com",
+    "password": "$2a$10$z9DR.LCg4XUybpJ5GfQGN.dApucAqtjPpWgHgUTPggyy.5AzExw5S",
+    "role": "ADMIN",
+    "createDate": {
+      "$date": "2024-04-03T19:24:44.848Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-03T19:24:44.848Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dad094853be52971c0db7"
+    },
+    "login": "user1@mail.com",
+    "password": "$2a$10$Ab.uGpRf.2iGGGRM3m7i1OljuKPnJg2/Bzm2sWj1d0KZq1q4nplMq",
+    "role": "USER",
+    "createDate": {
+      "$date": "2024-04-03T19:24:57.276Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-12T20:24:13.185Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dad0f4853be52971c0db8"
+    },
+    "login": "user2@mail.com",
+    "password": "$2a$10$S1KYPAm5/f0Z0As35y3N.ujmKEIY/cWNNrQD6UaicqQfozBeaBe36",
+    "role": "USER",
+    "createDate": {
+      "$date": "2024-04-03T19:25:03.722Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-08T13:29:49.942Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  },
+  {
+    "_id": {
+      "$oid": "660dad134853be52971c0db9"
+    },
+    "login": "user3@mail.com",
+    "password": "$2a$10$RZmPd5o7ad2q97/Q5NnFH.MKJpIhKOy08j4EpF00rlBGjJGbSTlf6",
+    "role": "USER",
+    "createDate": {
+      "$date": "2024-04-03T19:25:07.883Z"
+    },
+    "lastVisit": {
+      "$date": "2024-04-08T14:44:33.101Z"
+    },
+    "_class": "by.vitikova.discovery.model.User"
+  }
+]
