@@ -10,7 +10,6 @@ import by.vitikova.discovery.model.User;
 import by.vitikova.discovery.repository.UserRepository;
 import by.vitikova.discovery.service.UserService;
 import by.vitikova.discovery.update.PasswordUpdateDto;
-import by.vitikova.discovery.update.UserUpdateDto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -37,7 +36,6 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserConverter userConverter;
     private final ObjectMapper objectMapper;
-
     private final PasswordEncoder passwordEncoder;
 
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
@@ -115,8 +113,12 @@ public class UserServiceImpl implements UserService {
     public UserDto create(UserCreateDto dto) {
         if (Boolean.FALSE.equals(userRepository.existsByLogin(dto.getLogin()))) {
             var user = userConverter.convert(dto);
+
+            String encryptedPassword = passwordEncoder.encode(dto.getPassword());
             user.setCreateDate(LocalDateTime.now());
             user.setLastVisit(LocalDateTime.now());
+            user.setPassword(encryptedPassword);
+
             return userConverter.convert(userRepository.save(user));
         }
         throw new InvalidJwtException(USERNAME_IS_EXIST);
