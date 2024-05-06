@@ -4,6 +4,10 @@
 
 Данный микросервис предоставляет функционал для работы с пользователем.
 
+## Swagger
+
+http://localhost:8081/api/doc/swagger-ui/index.html#/
+
 ## UserController (8081/api/v1/users)
 
 Контроллер поддерживает следующие операции:

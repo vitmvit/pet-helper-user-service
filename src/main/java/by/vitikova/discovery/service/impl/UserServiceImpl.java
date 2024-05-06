@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -48,6 +50,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public boolean existsByLogin(String login) {
+        logger.info("UserService: exist by login: " + login);
         return userRepository.existsByLogin(login);
     }
 
@@ -58,8 +61,10 @@ public class UserServiceImpl implements UserService {
      * @return объект UserDto, если пользователь найден
      * @throws EntityNotFoundException если пользователь не найден
      */
+    @Cacheable(value = "user", key = "#login")
     @Override
     public UserDto findByLogin(String login) {
+        logger.info("UserService: find user by login: " + login);
         return userConverter.convert(userRepository.findByLogin(login).orElseThrow(EntityNotFoundException::new));
     }
 
@@ -73,6 +78,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public UserDto findByLoginAndRole(String login, RoleName role) {
+        logger.info("UserService: find user by login: " + login + ", end role: " + role);
         return userConverter.convert(userRepository.findByLoginAndRole(login, role).orElseThrow(EntityNotFoundException::new));
     }
 
@@ -84,6 +90,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public List<UserDto> findUsersByLastVisit(LocalDateTime lastVisit) {
+        logger.info("UserService: find users by last visit: " + lastVisit);
         return userRepository.findUsersByLastVisitBefore(lastVisit).stream().map(userConverter::convert).toList();
     }
 
@@ -97,6 +104,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public Page<UserDto> findAll(Integer offset, Integer limit) {
+        logger.info("UserService: find all users");
         Page<User> commentPage = userRepository.findAll(PageRequest.of(offset, limit));
         commentPage.stream().findAny().orElseThrow(EmptyListException::new);
         return commentPage.map(userConverter::convert);
@@ -109,34 +117,19 @@ public class UserServiceImpl implements UserService {
      * @return созданный пользователь в виде объекта UserDto
      * @throws InvalidJwtException если пользователь с таким логином уже существует
      */
+    @CacheEvict(value = "userrs", key = "#dto.login")
     @Override
     public UserDto create(UserCreateDto dto) {
         if (Boolean.FALSE.equals(userRepository.existsByLogin(dto.getLogin()))) {
+            logger.info("UserService: create user: " + dto.getLogin());
             var user = userConverter.convert(dto);
-
-            String encryptedPassword = passwordEncoder.encode(dto.getPassword());
             user.setCreateDate(LocalDateTime.now());
             user.setLastVisit(LocalDateTime.now());
-            user.setPassword(encryptedPassword);
-
             return userConverter.convert(userRepository.save(user));
         }
+        logger.error("UserService: username is exist");
         throw new InvalidJwtException(USERNAME_IS_EXIST);
     }
-
-//    /**
-//     * Обновление данных пользователя.
-//     *
-//     * @param dto данные пользователя для обновления
-//     * @return обновленный пользователь в виде объекта UserDto
-//     * @throws EntityNotFoundException если пользователь не найден
-//     */
-//    @Override
-//    public UserDto update(UserUpdateDto dto) {
-//        var user = userRepository.findByLogin(dto.getLogin()).orElseThrow(EntityNotFoundException::new);
-//        userConverter.merge(user, dto);
-//        return userConverter.convert(userRepository.save(user));
-//    }
 
     /**
      * Обновляет пароль пользователя.
@@ -146,18 +139,22 @@ public class UserServiceImpl implements UserService {
      * @throws EntityNotFoundException   если пользователь с заданным логином не найден
      * @throws PasswordUpdateException   если старый пароль неверен или новый пароль не совпадает с подтверждением
      */
+    @CacheEvict(value = "users", key = "#passwordUpdateDto.login")
     @Override
     public UserDto updatePassword(PasswordUpdateDto passwordUpdateDto) {
         var user = userRepository.findByLogin(passwordUpdateDto.getLogin()).orElseThrow(EntityNotFoundException::new);
         if (passwordEncoder.matches(passwordUpdateDto.getOldPassword(), user.getPassword())) {
             if (passwordUpdateDto.getNewPassword().equals(passwordUpdateDto.getConfirmPassword())) {
+                logger.info("UserService: update user: " + passwordUpdateDto.getLogin());
                 String encodePassword = passwordEncoder.encode(passwordUpdateDto.getNewPassword());
                 user.setPassword(encodePassword);
                 return userConverter.convert(userRepository.save(user));
             } else  {
+                logger.error("UserService: Password update exception");
                 throw new PasswordUpdateException("Password must be identical");
             }
         } else {
+            logger.error("UserService: Incorrect old password");
             throw new PasswordUpdateException("Incorrect old password");
         }
     }
@@ -171,6 +168,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public UserDto updateLastVisit(String login) {
+        logger.info("UserService: update last visit by login: " + login);
         var user = userRepository.findByLogin(login).orElseThrow(EntityNotFoundException::new);
         user.setLastVisit(LocalDateTime.now());
         return userConverter.convert(userRepository.save(user));
@@ -185,11 +183,14 @@ public class UserServiceImpl implements UserService {
      * @throws InvalidJwtException     если токен недействителен
      * @throws EntityNotFoundException если пользователь не найден
      */
+    @CacheEvict(value = "users", allEntries = true)
     @Override
     public void delete(String login, String token) {
         if (!getLogin(token).equals(login)) {
+            logger.info("UserService: delete user by login: " + login);
             userRepository.deleteUserByLogin(login);
         } else {
+            logger.error("UserService: Delete exception");
             throw new DeleteException(DELETE_EXCEPTION);
         }
     }
@@ -201,6 +202,7 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public void deleteAll(List<UserDto> list) {
+        logger.info("UserService: delete all users: " + list);
         for (UserDto userDto : list) {
             userRepository.deleteUserByLogin(userDto.getLogin());
         }
