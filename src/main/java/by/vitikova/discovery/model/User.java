@@ -65,6 +65,9 @@ public class User implements UserDetails {
         if (this.role == RoleName.VET) {
             return List.of(new SimpleGrantedAuthority(VET_ROLE), new SimpleGrantedAuthority(USER_ROLE));
         }
+        if (this.role == RoleName.EDITOR) {
+            return List.of(new SimpleGrantedAuthority(EDITOR_ROLE), new SimpleGrantedAuthority(USER_ROLE));
+        }
         return List.of(new SimpleGrantedAuthority(USER_ROLE));
     }
 
