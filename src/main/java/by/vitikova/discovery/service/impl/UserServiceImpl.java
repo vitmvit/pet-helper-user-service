@@ -4,6 +4,8 @@ import by.vitikova.discovery.UserDto;
 import by.vitikova.discovery.constant.RoleName;
 import by.vitikova.discovery.create.UserCreateDto;
 import by.vitikova.discovery.exception.*;
+import by.vitikova.discovery.feign.MessageClient;
+import by.vitikova.discovery.feign.PetHelperClient;
 import by.vitikova.discovery.mapper.UserConverter;
 import by.vitikova.discovery.model.TokenPayload;
 import by.vitikova.discovery.model.User;
@@ -21,6 +23,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -36,7 +39,9 @@ import static by.vitikova.discovery.constant.Constant.*;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final PetHelperClient petHelperClient;
     private final UserConverter userConverter;
+    private final MessageClient messageClient;
     private final ObjectMapper objectMapper;
     private final PasswordEncoder passwordEncoder;
 
@@ -117,7 +122,8 @@ public class UserServiceImpl implements UserService {
      * @return созданный пользователь в виде объекта UserDto
      * @throws InvalidJwtException если пользователь с таким логином уже существует
      */
-    @CacheEvict(value = "userrs", key = "#dto.login")
+    @CacheEvict(value = "users", key = "#dto.login")
+    @Transactional
     @Override
     public UserDto create(UserCreateDto dto) {
         if (Boolean.FALSE.equals(userRepository.existsByLogin(dto.getLogin()))) {
@@ -140,6 +146,7 @@ public class UserServiceImpl implements UserService {
      * @throws PasswordUpdateException   если старый пароль неверен или новый пароль не совпадает с подтверждением
      */
     @CacheEvict(value = "users", key = "#passwordUpdateDto.login")
+    @Transactional
     @Override
     public UserDto updatePassword(PasswordUpdateDto passwordUpdateDto) {
         var user = userRepository.findByLogin(passwordUpdateDto.getLogin()).orElseThrow(EntityNotFoundException::new);
@@ -166,6 +173,7 @@ public class UserServiceImpl implements UserService {
      * @return обновленный пользователь в виде объекта UserDto
      * @throws EntityNotFoundException если пользователь не найден
      */
+    @Transactional
     @Override
     public UserDto updateLastVisit(String login) {
         logger.info("UserService: update last visit by login: " + login);
@@ -184,10 +192,14 @@ public class UserServiceImpl implements UserService {
      * @throws EntityNotFoundException если пользователь не найден
      */
     @CacheEvict(value = "users", allEntries = true)
+    @Transactional
     @Override
     public void delete(String login, String token) {
         if (!getLogin(token).equals(login)) {
             logger.info("UserService: delete user by login: " + login);
+            petHelperClient.deleteNotificationsByUserLogin(login);
+            petHelperClient.deleteRecordsByUserLogin(login);
+            messageClient.deleteChatsByUserName(login);
             userRepository.deleteUserByLogin(login);
         } else {
             logger.error("UserService: Delete exception");
@@ -200,6 +212,7 @@ public class UserServiceImpl implements UserService {
      *
      * @param list список пользователей для удаления
      */
+    @Transactional
     @Override
     public void deleteAll(List<UserDto> list) {
         logger.info("UserService: delete all users: " + list);
