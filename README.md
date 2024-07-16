@@ -4,9 +4,21 @@
 
 Данный микросервис предоставляет функционал для работы с пользователем.
 
+## Доступ
+
+Роли:
+
+- доступен всем
+
 ## Swagger
 
 http://localhost:8081/api/doc/swagger-ui/index.html#/
+
+## Порт
+
+```text
+8081
+```
 
 ## UserController (8081/api/v1/users)
 
