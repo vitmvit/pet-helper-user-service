@@ -13,11 +13,12 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
-import static by.vitikova.discovery.constant.Constant.*;
+import static by.vitikova.discovery.constant.Constant.ADMIN_ROLE;
+import static by.vitikova.discovery.constant.Constant.EDITOR_ROLE;
+import static by.vitikova.discovery.constant.Constant.SUPPORT_ROLE;
+import static by.vitikova.discovery.constant.Constant.USER_ROLE;
+import static by.vitikova.discovery.constant.Constant.VET_ROLE;
 
-/**
- * /* Модель пользователя
- */
 @Document(collection = "user")
 @Data
 @NoArgsConstructor
@@ -36,13 +37,6 @@ public class User implements UserDetails {
 
     private LocalDateTime lastVisit;
 
-    /**
-     * Конструктор с параметрами.
-     *
-     * @param login    логин пользователя
-     * @param password пароль пользователя
-     * @param role     роль пользователя
-     */
     public User(String login, String password, RoleName role, LocalDateTime createDate, LocalDateTime lastVisit) {
         this.login = login;
         this.password = password;
@@ -51,9 +45,6 @@ public class User implements UserDetails {
         this.lastVisit = lastVisit;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (this.role == RoleName.ADMIN) {
@@ -76,33 +67,21 @@ public class User implements UserDetails {
         return login;
     }
 
-    /**
-     * /* {@inheritDoc}
-     */
     @Override
     public boolean isAccountNonExpired() {
         return true;
     }
 
-    /**
-     * /* {@inheritDoc}
-     */
     @Override
     public boolean isAccountNonLocked() {
         return true;
     }
 
-    /**
-     * /* {@inheritDoc}
-     */
     @Override
     public boolean isCredentialsNonExpired() {
         return true;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public boolean isEnabled() {
         return true;

@@ -13,27 +13,14 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    /**
-     * Настройка безопасности для конкретных запросов.
-     *
-     * @param http HttpSecurity для настройки безопасности
-     * @return SecurityFilterChain для обработки запросов безопасности
-     * @throws Exception если произошла ошибка при настройке
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable);
         return http.build();
     }
 
-    /**
-     * Создание кодировщика пароля.
-     *
-     * @return кодировщик пароля
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }
-
