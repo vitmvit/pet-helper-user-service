@@ -12,8 +12,6 @@ import java.util.List;
 
 /**
  * Конфигурация для настройки конвертеров при сохранении и чтении данных из MongoDB.
- *
- * @return объект MongoCustomConversions, содержащий список конвертеров
  */
 @Configuration
 public class MongoDBConfiguration {

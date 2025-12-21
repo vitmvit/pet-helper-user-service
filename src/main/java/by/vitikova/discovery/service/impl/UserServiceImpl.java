@@ -117,12 +117,10 @@ public class UserServiceImpl implements UserService {
                     }
 
                     return userConverter.convert(dto)
-                            .flatMap(user -> {
-                                return Mono.fromCallable(() -> passwordEncoder.encode(user.getPassword())
-                                        ).subscribeOn(Schedulers.boundedElastic())
-                                        .doOnNext(user::setPassword)
-                                        .thenReturn(user);
-                            })
+                            .flatMap(user -> Mono.fromCallable(() -> passwordEncoder.encode(user.getPassword())
+                                    ).subscribeOn(Schedulers.boundedElastic())
+                                    .doOnNext(user::setPassword)
+                                    .thenReturn(user))
                             .flatMap(userRepository::save)
                             .flatMap(userConverter::convert)
                             .doOnSuccess(savedUser -> log.info("User created successfully: {}", dto.getLogin()));

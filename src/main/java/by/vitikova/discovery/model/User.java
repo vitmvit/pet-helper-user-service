@@ -39,14 +39,6 @@ public class User implements UserDetails {
 
     private LocalDateTime lastVisit;
 
-    public User(String login, String password, RoleName role, LocalDateTime createDate, LocalDateTime lastVisit) {
-        this.login = login;
-        this.password = password;
-        this.role = role;
-        this.createDate = createDate;
-        this.lastVisit = lastVisit;
-    }
-
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return getRolesForUser()
