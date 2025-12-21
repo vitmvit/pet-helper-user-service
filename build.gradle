@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-    implementation "by.vitikova.discovery:pet-helper-dto-lib:2.1"
+    implementation "by.vitikova.discovery:pet-helper-dto-lib:2.2"
 
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb-reactive'
     implementation 'org.springframework.boot:spring-boot-starter'
