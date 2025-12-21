@@ -24,7 +24,7 @@ import static by.vitikova.discovery.constant.Constant.USER_ROLE;
 @Getter
 @Setter
 @NoArgsConstructor
-public class User implements UserDetails {
+public class User {
 
     @Id
     private String id;
@@ -38,46 +38,4 @@ public class User implements UserDetails {
     private LocalDateTime createDate;
 
     private LocalDateTime lastVisit;
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return getRolesForUser()
-                .stream()
-                .map(SimpleGrantedAuthority::new)
-                .collect(Collectors.toList());
-    }
-
-    private List<String> getRolesForUser() {
-        return switch (this.role) {
-            case ADMIN -> List.of(ADMIN_ROLE, USER_ROLE);
-            case SUPPORT -> List.of(SUPPORT_ROLE, USER_ROLE);
-            case EDITOR -> List.of(EDITOR_ROLE, USER_ROLE);
-            default -> List.of(USER_ROLE);
-        };
-    }
-
-    @Override
-    public String getUsername() {
-        return login;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isEnabled() {
-        return true;
-    }
 }
