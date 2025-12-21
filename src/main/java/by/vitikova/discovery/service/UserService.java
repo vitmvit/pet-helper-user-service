@@ -5,29 +5,31 @@ import by.vitikova.discovery.constant.RoleName;
 import by.vitikova.discovery.create.UserCreateDto;
 import by.vitikova.discovery.update.PasswordUpdateDto;
 import org.springframework.data.domain.Page;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 public interface UserService {
 
-    boolean existsByLogin(String login);
+    Mono<Boolean> existsByLogin(String login);
 
-    UserDto findByLogin(String login);
+    Mono<UserDto> findByLogin(String login);
 
-    UserDto findByLoginAndRole(String login, RoleName role);
+    Mono<UserDto> findByLoginAndRole(String login, RoleName role);
 
-    List<UserDto> findUsersByLastVisit(LocalDateTime lastVisit);
+    Flux<UserDto> findUsersByLastVisit(LocalDateTime lastVisit);
 
-    Page<UserDto> findAll(Integer offset, Integer limit);
+    Mono<Page<UserDto>> findAll(Integer offset, Integer limit);
 
-    UserDto create(UserCreateDto userDto);
+    Mono<UserDto> create(UserCreateDto userDto);
 
-    UserDto updatePassword(PasswordUpdateDto passwordUpdateDto);
+    Mono<UserDto> updatePassword(PasswordUpdateDto passwordUpdateDto);
 
-    UserDto updateLastVisit(String login);
+    Mono<UserDto> updateLastVisit(String login);
 
-    void delete(String login, String token);
+    Mono<Void> delete(String login, String token);
 
-    void deleteAll(List<UserDto> list);
+    Mono<Void> deleteAll(List<String> list);
 }

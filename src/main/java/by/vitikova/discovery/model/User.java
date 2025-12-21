@@ -1,8 +1,9 @@
 package by.vitikova.discovery.model;
 
 import by.vitikova.discovery.constant.RoleName;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.security.core.GrantedAuthority;
@@ -12,15 +13,16 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static by.vitikova.discovery.constant.Constant.ADMIN_ROLE;
 import static by.vitikova.discovery.constant.Constant.EDITOR_ROLE;
 import static by.vitikova.discovery.constant.Constant.SUPPORT_ROLE;
 import static by.vitikova.discovery.constant.Constant.USER_ROLE;
-import static by.vitikova.discovery.constant.Constant.VET_ROLE;
 
 @Document(collection = "user")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 public class User implements UserDetails {
 
@@ -47,19 +49,19 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (this.role == RoleName.ADMIN) {
-            return List.of(new SimpleGrantedAuthority(ADMIN_ROLE), new SimpleGrantedAuthority(USER_ROLE));
-        }
-        if (this.role == RoleName.SUPPORT) {
-            return List.of(new SimpleGrantedAuthority(SUPPORT_ROLE), new SimpleGrantedAuthority(USER_ROLE));
-        }
-        if (this.role == RoleName.VET) {
-            return List.of(new SimpleGrantedAuthority(VET_ROLE), new SimpleGrantedAuthority(USER_ROLE));
-        }
-        if (this.role == RoleName.EDITOR) {
-            return List.of(new SimpleGrantedAuthority(EDITOR_ROLE), new SimpleGrantedAuthority(USER_ROLE));
-        }
-        return List.of(new SimpleGrantedAuthority(USER_ROLE));
+        return getRolesForUser()
+                .stream()
+                .map(SimpleGrantedAuthority::new)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> getRolesForUser() {
+        return switch (this.role) {
+            case ADMIN -> List.of(ADMIN_ROLE, USER_ROLE);
+            case SUPPORT -> List.of(SUPPORT_ROLE, USER_ROLE);
+            case EDITOR -> List.of(EDITOR_ROLE, USER_ROLE);
+            default -> List.of(USER_ROLE);
+        };
     }
 
     @Override

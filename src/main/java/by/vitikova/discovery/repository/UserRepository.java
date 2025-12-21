@@ -2,21 +2,27 @@ package by.vitikova.discovery.repository;
 
 import by.vitikova.discovery.constant.RoleName;
 import by.vitikova.discovery.model.User;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.repository.ReactiveMongoRepository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
-public interface UserRepository extends MongoRepository<User, String> {
+public interface UserRepository extends ReactiveMongoRepository<User, String> {
 
-    Optional<User> findByLogin(String login);
+    Mono<Boolean> existsByLogin(String login);
 
-    Optional<User> findByLoginAndRole(String login, RoleName role);
+    Mono<User> findByLogin(String login);
 
-    List<User> findUsersByLastVisitBefore(LocalDateTime lastVisit);
+    Mono<User> findByLoginAndRole(String login, RoleName role);
 
-    boolean existsByLogin(String login);
+    Flux<User> findUsersByLastVisitBefore(LocalDateTime lastVisit);
 
-    void deleteUserByLogin(String login);
+    Flux<User> findAllBy(Pageable pageable);
+
+    Mono<Void> deleteUserByLogin(String login);
+
+    Mono<Void> deleteByLoginIn(List<String> logins);
 }

@@ -13,10 +13,15 @@ import by.vitikova.discovery.util.TokenUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,7 +29,6 @@ import java.util.List;
 import static by.vitikova.discovery.constant.Constant.DELETE_EXCEPTION;
 import static by.vitikova.discovery.constant.Constant.USERNAME_IS_EXIST;
 
-// todo почистить как будет нормальная сага
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,103 +40,232 @@ public class UserServiceImpl implements UserService {
     private final TokenUtil tokenUtil;
 
     @Override
-    public boolean existsByLogin(String login) {
+    public Mono<Boolean> existsByLogin(String login) {
         log.info("UserService: exist by login: " + login);
         return userRepository.existsByLogin(login);
     }
 
-    //    @Cacheable(value = "user", key = "#login")
     @Override
-    public UserDto findByLogin(String login) {
+    public Mono<UserDto> findByLogin(String login) {
         log.info("UserService: find user by login: " + login);
-        return userConverter.convert(userRepository.findByLogin(login).orElseThrow(EntityNotFoundException::new));
+        return userRepository.findByLogin(login)
+                .switchIfEmpty(Mono.error(() ->
+                        {
+                            log.warn("User not found with login: {}", login);
+                            return new EntityNotFoundException("User not found with login: " + login);
+                        }
+                ))
+                .flatMap(userConverter::convert)
+                .doOnSuccess(userDto -> log.debug("Successfully found user by login: {}", login));
     }
 
     @Override
-    public UserDto findByLoginAndRole(String login, RoleName role) {
+    public Mono<UserDto> findByLoginAndRole(String login, RoleName role) {
         log.info("UserService: find user by login: " + login + ", end role: " + role);
-        return userConverter.convert(userRepository.findByLoginAndRole(login, role).orElseThrow(EntityNotFoundException::new));
+        return userRepository.findByLoginAndRole(login, role)
+                .switchIfEmpty(Mono.error(() ->
+                        {
+                            log.warn("User not found with login and role: {}, {}", login, role);
+                            return new EntityNotFoundException("User not found with login and role: " + login + ", " + role);
+                        }
+                ))
+                .flatMap(userConverter::convert)
+                .doOnSuccess(userDto -> log.debug("Successfully found user by login and role: {}, {}", login, role));
     }
 
     @Override
-    public List<UserDto> findUsersByLastVisit(LocalDateTime lastVisit) {
+    public Flux<UserDto> findUsersByLastVisit(LocalDateTime lastVisit) {
         log.info("UserService: find users by last visit: " + lastVisit);
-        return userRepository.findUsersByLastVisitBefore(lastVisit).stream().map(userConverter::convert).toList();
+        return userRepository.findUsersByLastVisitBefore(lastVisit)
+                .flatMap(userConverter::convert)
+                .doOnComplete(() ->
+                        log.debug("Search completed for last visit before: {}", lastVisit));
     }
 
     @Override
-    public Page<UserDto> findAll(Integer offset, Integer limit) {
+    public Mono<Page<UserDto>> findAll(Integer offset, Integer limit) {
         log.info("UserService: find all users");
-        Page<User> commentPage = userRepository.findAll(PageRequest.of(offset, limit));
-        commentPage.stream().findAny().orElseThrow(EmptyListException::new);
-        return commentPage.map(userConverter::convert);
+
+        Pageable pageable = PageRequest.of(offset, limit);
+
+        return userRepository.findAllBy(pageable)
+                .flatMap(userConverter::convert)
+                .collectList()
+                .flatMap(userDtos -> {
+                    if (userDtos.isEmpty()) {
+                        return Mono.error(new EmptyListException("Empty list"));
+                    }
+                    return userRepository.count().map(total -> new PageImpl<>(userDtos, pageable, total));
+                });
     }
 
-    //    @CacheEvict(value = "users", key = "#passwordUpdateDto.login")
-    @Transactional
     @Override
-    public UserDto updatePassword(PasswordUpdateDto passwordUpdateDto) {
-        var user = userRepository.findByLogin(passwordUpdateDto.getLogin()).orElseThrow(EntityNotFoundException::new);
-        if (passwordEncoder.matches(passwordUpdateDto.getOldPassword(), user.getPassword())) {
-            if (passwordUpdateDto.getNewPassword().equals(passwordUpdateDto.getConfirmPassword())) {
-                log.info("UserService: update user: " + passwordUpdateDto.getLogin());
-                String encodePassword = passwordEncoder.encode(passwordUpdateDto.getNewPassword());
-                user.setPassword(encodePassword);
-                return userConverter.convert(userRepository.save(user));
-            } else {
-                log.error("UserService: Password update exception");
-                throw new PasswordUpdateException("Password must be identical");
-            }
-        } else {
-            log.error("UserService: Incorrect old password");
-            throw new PasswordUpdateException("Incorrect old password");
+    public Mono<UserDto> create(UserCreateDto dto) {
+        log.info("UserService: create user: {}", dto.getLogin());
+
+        if (dto.getPassword() != null && dto.getPasswordConfirm() != null
+                && !dto.getPassword().equals(dto.getPasswordConfirm())) {
+            log.error("UserService: passwords do not match for user: {}", dto.getLogin());
+            return Mono.error(new ValidationException("Passwords do not match"));
         }
+
+        return userRepository.existsByLogin(dto.getLogin())
+                .flatMap(exists -> {
+                    if (exists) {
+                        log.error("UserService: username already exists");
+                        return Mono.error(new EntityIsExistsException(USERNAME_IS_EXIST));
+                    }
+
+                    return userConverter.convert(dto)
+                            .flatMap(user -> {
+                                return Mono.fromCallable(() -> passwordEncoder.encode(user.getPassword())
+                                        ).subscribeOn(Schedulers.boundedElastic())
+                                        .doOnNext(user::setPassword)
+                                        .thenReturn(user);
+                            })
+                            .flatMap(userRepository::save)
+                            .flatMap(userConverter::convert)
+                            .doOnSuccess(savedUser -> log.info("User created successfully: {}", dto.getLogin()));
+                });
     }
 
     @Override
-    public UserDto create(UserCreateDto dto) {
-        if (Boolean.FALSE.equals(userRepository.existsByLogin(dto.getLogin()))) {
-            log.info("UserService: create user: " + dto.getLogin());
-            var user = userConverter.convert(dto);
-            user.setCreateDate(LocalDateTime.now());
-            user.setLastVisit(LocalDateTime.now());
-            return userConverter.convert(userRepository.save(user));
-        }
-        log.error("UserService: username is exist");
-        throw new InvalidJwtException(USERNAME_IS_EXIST);
-    }
-
     @Transactional
-    @Override
-    public UserDto updateLastVisit(String login) {
-        log.info("UserService: update last visit by login: " + login);
-        var user = userRepository.findByLogin(login).orElseThrow(EntityNotFoundException::new);
-        user.setLastVisit(LocalDateTime.now());
-        return userConverter.convert(userRepository.save(user));
+    public Mono<UserDto> updatePassword(PasswordUpdateDto passwordUpdateDto) {
+        return userRepository.findByLogin(passwordUpdateDto.getLogin())
+                .switchIfEmpty(Mono.defer(() -> {
+                    log.error("User not found: {}", passwordUpdateDto.getLogin());
+                    return Mono.error(new EntityNotFoundException("User with lastname not found: " + passwordUpdateDto.getLogin()));
+                }))
+                .flatMap(user -> validateOldPassword(user, passwordUpdateDto))
+                .flatMap(user -> validateNewPasswordsMatch(user, passwordUpdateDto))
+                .flatMap(user -> validatePasswordConfirmation(passwordUpdateDto)
+                        .then(Mono.just(user)))
+                .flatMap(user -> encodeNewPassword(user, passwordUpdateDto))
+                .flatMap(this::saveUserWithNewPassword)
+                .flatMap(userConverter::convert)
+                .doOnSuccess(dto -> log.info("Password updated successfully for user: {}", dto.getLogin()))
+                .doOnError(throwable -> log.error("Failed to update password for user: {}",
+                        passwordUpdateDto.getLogin(), throwable));
     }
 
-    //    @CacheEvict(value = "users", allEntries = true)
-    @Transactional
     @Override
-    public void delete(String login, String token) {
-        if (!tokenUtil.getLogin(token).equals(login)) {
-            log.info("UserService: delete user by login: " + login);
-//            petHelperClient.deleteNotificationsByUserLogin(login);
-//            petHelperClient.deleteRecordsByUserLogin(login);
-//            messageClient.deleteChatsByUserName(login);
-            userRepository.deleteUserByLogin(login);
-        } else {
-            log.error("UserService: Delete exception");
-            throw new DeleteException(DELETE_EXCEPTION);
-        }
+    @Transactional
+    public Mono<UserDto> updateLastVisit(String login) {
+        log.info("UserService: update last visit by login: {}", login);
+        return userRepository.findByLogin(login)
+                .switchIfEmpty(Mono.error(new EntityNotFoundException("User not found with login: " + login)))
+                .flatMap(user -> {
+                    user.setLastVisit(LocalDateTime.now());
+                    return userRepository.save(user);
+                })
+                .flatMap(userConverter::convert)
+                .doOnSuccess(userDto ->
+                        log.debug("Successfully updated last visit for user: {}", login));
     }
 
-    @Transactional
     @Override
-    public void deleteAll(List<UserDto> list) {
+    @Transactional
+    public Mono<Void> delete(String login, String token) {
+        return Mono.fromCallable(() -> {
+                    String tokenLogin = tokenUtil.getLogin(token);
+                    if (!tokenLogin.equals(login)) {
+                        log.info("UserService: delete user by login: " + login);
+                        return login;
+                    } else {
+                        log.error("Delete exception: user cannot delete themselves");
+                        throw new DeleteException(DELETE_EXCEPTION);
+                    }
+                })
+                .flatMap(validLogin ->
+                        deleteUserDependencies(validLogin)
+                                .then(userRepository.deleteUserByLogin(validLogin))
+                )
+                .doOnSuccess(unused -> log.info("Successfully deleted user: {}", login))
+                .doOnError(DeleteException.class, error -> log.warn("Delete operation rejected: {}", error.getMessage()));
+    }
+
+    @Override
+    @Transactional
+    public Mono<Void> deleteAll(List<String> list) {
         log.info("UserService: delete all users: " + list);
-        for (UserDto userDto : list) {
-            userRepository.deleteUserByLogin(userDto.getLogin());
+        return Flux.fromIterable(list)
+                .flatMap(this::deleteUserDependencies)
+                .then()
+                .then(Mono.defer(() -> userRepository.deleteByLoginIn(list)))
+                .doOnSuccess(v -> log.info("Successfully deleted {} users with dependencies", list.size()));
+    }
+
+    private Mono<Void> deleteUserDependencies(String login) {
+        return Mono.when(
+                //todo привести в порядок как будет сага
+                // Пример реактивных вызовов (замените на реальные реактивные клиенты)
+//                petHelperClient.deleteNotificationsByUserLogin(login),
+//                petHelperClient.deleteRecordsByUserLogin(login),
+//                messageClient.deleteChatsByUserName(login)
+        ).doOnSubscribe(subscription ->
+                log.debug("Deleting dependencies for user: {}", login));
+    }
+
+    private Mono<User> validateOldPassword(User user, PasswordUpdateDto dto) {
+        if (dto.getOldPassword() == null || dto.getOldPassword().trim().isEmpty()) {
+            return Mono.error(new PasswordUpdateException("Old password cannot be empty"));
         }
+
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            return Mono.error(new PasswordUpdateException("User password not found"));
+        }
+
+        return Mono.fromCallable(() -> passwordEncoder.matches(dto.getOldPassword(), user.getPassword()))
+                .flatMap(isValid -> {
+                    if (!isValid) {
+                        log.error("Incorrect old password for user: {}", dto.getLogin());
+                        return Mono.error(new PasswordUpdateException("Incorrect old password"));
+                    }
+                    log.info("Old password validated successfully for user: {}", dto.getLogin());
+                    return Mono.just(user);
+                });
+    }
+
+    private Mono<User> validateNewPasswordsMatch(User user, PasswordUpdateDto dto) {
+        return Mono.fromCallable(() -> passwordEncoder.matches(dto.getNewPassword(), user.getPassword()))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(isSameAsOld -> {
+                    if (isSameAsOld) {
+                        log.error("New password is identical to old password for user: {}", dto.getLogin());
+                        return Mono.error(new PasswordUpdateException("New password must be different from the old one"));
+                    }
+                    log.info("New password is different from old password for user: {}", dto.getLogin());
+                    return Mono.just(user);
+                });
+    }
+
+    private Mono<Void> validatePasswordConfirmation(PasswordUpdateDto dto) {
+        if (dto.getNewPassword() == null || dto.getConfirmPassword() == null) {
+            return Mono.error(new ValidationException("Both password fields are required"));
+        }
+
+        if (!dto.getNewPassword().equals(dto.getConfirmPassword())) {
+            log.warn("Password mismatch for user {}. New: {}, Confirm: {}",
+                    dto.getLogin(),
+                    dto.getNewPassword(),
+                    dto.getConfirmPassword());
+            return Mono.error(new ValidationException("Password and confirmation do not match"));
+        }
+
+        return Mono.empty();
+    }
+
+    private Mono<User> encodeNewPassword(User user, PasswordUpdateDto dto) {
+        return Mono.fromCallable(() -> passwordEncoder.encode(dto.getNewPassword())
+        ).doOnNext(encodedPassword -> {
+            user.setPassword(encodedPassword);
+            log.debug("Password encoded for user: {}", dto.getLogin());
+        }).thenReturn(user);
+    }
+
+    private Mono<User> saveUserWithNewPassword(User user) {
+        return userRepository.save(user)
+                .doOnNext(savedUser -> log.debug("User saved with new password: {}", savedUser.getLogin()));
     }
 }

@@ -2,11 +2,23 @@
 
 [Точка входа в приложение](https://github.com/vitmvit/pet-helper-api-gateway-service)
 
-Данный микросервис предоставляет функционал для работы с пользователем.
+Микросервис для управления пользователями, построенный на Java Spring Boot с использованием реактивного подхода (
+WebFlux + Reactive MongoDB). Сервис предоставляет REST API для операций CRUD над пользователями, управления паролями и
+отслеживания активности.
 
-## Доступ
+## Технический стек
 
-Роли:
+- Java 17+
+- Spring Boot 3.2.1
+- Spring WebFlux (реактивный REST API)
+- Spring Data MongoDB Reactive
+- Spring Security
+- Spring Cloud Netflix Eureka Client
+- Project Reactor (Mono/Flux)
+- Lombok
+- SpringDoc OpenAPI
+
+## Доступ по ролям
 
 - доступен всем
 
@@ -20,6 +32,26 @@ http://localhost:8081/api/doc/swagger-ui/index.html#/
 8081
 ```
 
+## Валидация DTO моделей на UserController
+
+### Таблица валидации UserCreateDto
+
+| Поле            | Тип      | Обязательно | Правила валидации           | Сообщение об ошибке                                                     |
+|-----------------|----------|-------------|-----------------------------|-------------------------------------------------------------------------|
+| login           | String   | Да          | Валидный email формат       | "Email is required"<br>"Email should be valid"                          |
+| password        | String   | Да          | Минимум 6 символов          | "Password is required"<br>"Password must be at least 6 characters long" |
+| passwordConfirm | String   | Да          | Должно совпадать с password | "Password confirmation is required"                                     |
+| role            | RoleName | Да          | Не может быть null          | "Role is required"                                                      |
+
+### Таблица валидации PasswordUpdateDto
+
+| Поле            | Тип    | Обязательно | Правила валидации              | Сообщение об ошибки                                                             |
+|-----------------|--------|-------------|--------------------------------|---------------------------------------------------------------------------------|
+| login           | String | Да          | Валидный email формат          | "Email is required"<br>"Email should be valid"                                  |
+| oldPassword     | String | Да          | Любая непустая строка          | "Current password is required"                                                  |
+| newPassword     | String | Да          | Минимум 6 символов             | "New password is required"<br>"New password must be at least 6 characters long" |
+| confirmPassword | String | Да          | Должно совпадать с newPassword | "Password confirmation is required"                                             |
+
 ## UserController (8081/api/v1/users)
 
 Контроллер поддерживает следующие операции:
@@ -32,29 +64,31 @@ http://localhost:8081/api/doc/swagger-ui/index.html#/
 - создание пользователя
 - обновление пароля
 - обновление даты последнего визита
-- удаление пользователмя по логину
-- удаление списка пользователей
+- удаление пользователя по логину
+- удаление списка пользователей по списку логинов
 
 ### GET-запросы:
 
 #### findByLogin(@PathVariable("login") String login)
 
+##### Успешный поиск
+
 Request:
 
 ```http request
-http://localhost:8081/api/v1/users/support1@mail.com
+http://localhost:8081/api/v1/users/admin1@mail.com
 ```
 
 Response:
 
 ```json
 {
-  "id": "660daccb4853be52971c0daf",
-  "login": "support1@mail.com",
-  "password": "$2a$10$aOTx.qSzodaiJ6ABXJQqM.XvYcFlQR2ucGud0TYMKVoALUq640cD6",
-  "role": "SUPPORT",
-  "createDate": "2024-04-03T22:23:55.703",
-  "lastVisit": "2024-04-05T01:29:28.875"
+  "id": "6945530dd6e294613a55af49",
+  "login": "admin1@mail.com",
+  "password": "$2a$10$Iz2/ME9tA9S8bmllxdiKYeecx2MT1.9Tw8RBC4Jpf.tzzB6FwBQ3O",
+  "role": "ADMIN",
+  "createDate": "2025-12-19T16:28:45.268",
+  "lastVisit": "2025-12-19T16:28:45.268"
 }
 ```
 
@@ -63,46 +97,147 @@ Error:
 ```json
 {
   "errorMessage": "Entity not found!",
+  "errorCode": 404
+}
+```
+
+##### Пользователь не найден
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/admin12@mail.com
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "User not found with login: admin12@mail.com",
   "errorCode": 404
 }
 ```
 
 #### findByLoginAndRole(@PathVariable("login") String login, @PathVariable("role") RoleName role)
 
+##### Успешный поиск
+
 Request:
 
 ```http request
-http://localhost:8081/api/v1/users/support1@mail.com/SUPPORT
+http://localhost:8081/api/v1/users/admin1@mail.com/ADMIN
 ```
 
 Response:
 
 ```json
 {
-  "id": "660daccb4853be52971c0daf",
-  "login": "support1@mail.com",
-  "password": "$2a$10$aOTx.qSzodaiJ6ABXJQqM.XvYcFlQR2ucGud0TYMKVoALUq640cD6",
-  "role": "SUPPORT",
-  "createDate": "2024-04-03T22:23:55.703",
-  "lastVisit": "2024-04-05T01:29:28.875"
+  "id": "6945530dd6e294613a55af49",
+  "login": "admin1@mail.com",
+  "password": "$2a$10$Iz2/ME9tA9S8bmllxdiKYeecx2MT1.9Tw8RBC4Jpf.tzzB6FwBQ3O",
+  "role": "ADMIN",
+  "createDate": "2025-12-19T16:28:45.268",
+  "lastVisit": "2025-12-19T16:28:45.268"
 }
 ```
 
-Error:
-
-```json
-{
-  "errorMessage": "Entity not found!",
-  "errorCode": 404
-}
-```
-
-#### existsByLogin(@PathVariable("login") String login)
+##### Не верный логин
 
 Request:
 
 ```http request
-http://localhost:8081/api/v1/users/exists/support1@mail.com
+http://localhost:8081/api/v1/users/admin12@mail.com/ADMIN
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "User not found with login and role: admin12@mail.com, ADMIN",
+  "errorCode": 404
+}
+```
+
+##### Не верный логин
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/support12@mail.com/ADMIN
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "User not found with login and role: support12@mail.com, ADMIN",
+  "errorCode": 404
+}
+```
+
+#### findUsersByLastVisit(@RequestParam LocalDateTime lastVisit)
+
+##### Успешный поиск
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/lastVisit?lastVisit=2025-12-19T20:11:16.908732
+```
+
+Response:
+
+```json
+[
+  {
+    "id": "6945530dd6e294613a55af49",
+    "login": "admin1@mail.com",
+    "password": "$2a$10$Iz2/ME9tA9S8bmllxdiKYeecx2MT1.9Tw8RBC4Jpf.tzzB6FwBQ3O",
+    "role": "ADMIN",
+    "createDate": "2025-12-19T16:28:45.268",
+    "lastVisit": "2025-12-19T16:28:45.268"
+  },
+  {
+    "id": "6945547cd6e294613a55af4a",
+    "login": "admin2@mail.com",
+    "password": "$2a$10$IgZWQKJ0DH3u8Z1BDvTQEuRAtmeEMK/kGWWDCF8yOxm4mePvBonEy",
+    "role": "ADMIN",
+    "createDate": "2025-12-19T16:34:52.786",
+    "lastVisit": "2025-12-19T16:34:52.786"
+  },
+  {
+    "id": "6945548dd6e294613a55af4b",
+    "login": "admin3@mail.com",
+    "password": "$2a$10$s0zc9LFzfQVOyO4GVcziDeGtoZFKEvZ4dQ1Ztiozjn3xOB6.zvmXW",
+    "role": "ADMIN",
+    "createDate": "2025-12-19T16:35:09.184",
+    "lastVisit": "2025-12-19T16:35:09.184"
+  }
+]
+```
+
+##### Пустой ответ
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/lastVisit?lastVisit=2025-11-19T20:11:16.908732
+```
+
+Response:
+
+```json
+[]
+```
+
+#### existsByLogin(@PathVariable("login") String login)
+
+##### Пользователь существует
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/exists/admin1@mail.com
 ```
 
 Response:
@@ -111,10 +246,12 @@ Response:
 true
 ```
 
+##### Пользователь не существует
+
 Request:
 
 ```http request
-http://localhost:8081/api/v1/users/exists/support1@mail.com2
+http://localhost:8081/api/v1/users/exists/admin12@mail.com
 ```
 
 Response:
@@ -124,6 +261,8 @@ false
 ```
 
 #### findAll(@RequestParam(value = "offset", defaultValue = OFFSET_DEFAULT) Integer offset, @RequestParam(value = "limit", defaultValue = LIMIT_DEFAULT) Integer limit
+
+##### Запрос с дефолтной пагинацией
 
 Request:
 
@@ -137,102 +276,176 @@ Response:
 {
   "content": [
     {
-      "id": "6604580e2446c079fac07b70",
-      "login": "ADMIN1",
-      "password": "$2a$10$F/6Mcn0lilCfjiDy5Up5iudAVRZhowgfcXx5QEJC39DFYeb5A6OHu",
+      "id": "6945530dd6e294613a55af49",
+      "login": "admin1@mail.com",
+      "password": "$2a$10$Iz2/ME9tA9S8bmllxdiKYeecx2MT1.9Tw8RBC4Jpf.tzzB6FwBQ3O",
       "role": "ADMIN",
-      "createDate": "2024-03-27T20:31:58.255",
-      "lastVisit": "2024-03-31T13:09:50.841"
+      "createDate": "2025-12-19T16:28:45.268",
+      "lastVisit": "2025-12-19T16:28:45.268"
     },
     {
-      "id": "66045c892446c079fac07b72",
-      "login": "SUPPORT1",
-      "password": "SUPPORT1",
-      "role": "SUPPORT",
-      "createDate": "2024-03-27T20:51:05.528",
-      "lastVisit": "2024-04-01T22:25:55.984"
+      "id": "6945547cd6e294613a55af4a",
+      "login": "admin2@mail.com",
+      "password": "$2a$10$IgZWQKJ0DH3u8Z1BDvTQEuRAtmeEMK/kGWWDCF8yOxm4mePvBonEy",
+      "role": "ADMIN",
+      "createDate": "2025-12-19T16:34:52.786",
+      "lastVisit": "2025-12-19T16:34:52.786"
     },
     {
-      "id": "66080f497c94f65697377704",
-      "login": "USER1",
-      "password": "$2a$10$GCBo7hmz47iC6yR0NJ73yOzS.VRczGcjNhKJ7mJbeJyjg482v2k4q",
-      "role": "USER",
-      "createDate": "2024-03-30T16:10:33.577",
-      "lastVisit": "2024-03-30T18:10:43.381"
+      "id": "6945548dd6e294613a55af4b",
+      "login": "admin3@mail.com",
+      "password": "$2a$10$s0zc9LFzfQVOyO4GVcziDeGtoZFKEvZ4dQ1Ztiozjn3xOB6.zvmXW",
+      "role": "ADMIN",
+      "createDate": "2025-12-19T16:35:09.184",
+      "lastVisit": "2025-12-19T16:35:09.184"
     },
     {
-      "id": "660810427c94f65697377705",
-      "login": "USER4",
-      "password": "$2a$10$UyJQASaKB/ksZ8DKXawJ9uhieeYSxBlfPXvnR.cywvAnOXBC.UFbu",
-      "role": "USER",
-      "createDate": "2024-03-30T16:14:42.937",
-      "lastVisit": "2024-03-30T16:14:42.937"
-    },
-    {
-      "id": "660abf34295e95149bf61815",
-      "login": "SUPPORT2",
-      "password": "$2a$10$UO6bHdOzszuB8cPJ6veOXOY66W.tH/F0IxA22K9JwZWg3ZylFxFdC",
-      "role": "SUPPORT",
-      "createDate": "2024-04-01T17:05:40.946",
-      "lastVisit": "2024-04-03T22:22:23.099"
-    },
-    {
-      "id": "660daccb4853be52971c0daf",
+      "id": "69458e338ec2ef43a439e1ab",
       "login": "support1@mail.com",
-      "password": "$2a$10$aOTx.qSzodaiJ6ABXJQqM.XvYcFlQR2ucGud0TYMKVoALUq640cD6",
+      "password": "$2a$10$56bO5MHmiQmShvlEbvLnO.R9c5yfxMKLH3LvVK9kFLzEgqjPtvL3W",
       "role": "SUPPORT",
-      "createDate": "2024-04-03T22:23:55.703",
-      "lastVisit": "2024-04-05T01:29:28.875"
+      "createDate": "2025-12-19T20:41:07.343",
+      "lastVisit": "2025-12-19T20:41:07.343"
     },
     {
-      "id": "660dacd54853be52971c0db0",
+      "id": "69459073a843694e7c2a7047",
       "login": "support2@mail.com",
-      "password": "$2a$10$9K36ii.tx8yQEvbTV7O45.zEyg4VUfmzxFX03UfKDQODr1hYeBbKy",
+      "password": "$2a$10$s3W6kQCjnDax3vH1uJSaJOjFOqcn.08mahuWz.Btv6HKpELrjEXFS",
       "role": "SUPPORT",
-      "createDate": "2024-04-03T22:24:05.459",
-      "lastVisit": "2024-04-03T22:24:05.459"
+      "createDate": "2025-12-19T20:50:43.187",
+      "lastVisit": "2025-12-19T20:50:43.187"
     },
     {
-      "id": "660dacda4853be52971c0db1",
+      "id": "69459079a843694e7c2a7048",
       "login": "support3@mail.com",
-      "password": "$2a$10$htsb9n5TpZIG/4Nf2Qkdee/aU8qvfcL9dKJJfod74.sQ1WPzsLpja",
+      "password": "$2a$10$X44BfXbB19R3Y2z7CFvBdO038XyUeJKxhoBMnzZd6aly5/0Q1fIsm",
       "role": "SUPPORT",
-      "createDate": "2024-04-03T22:24:10.378",
-      "lastVisit": "2024-04-03T22:24:10.378"
+      "createDate": "2025-12-19T20:50:49.223",
+      "lastVisit": "2025-12-19T20:50:49.223"
     },
     {
-      "id": "660dacdf4853be52971c0db2",
+      "id": "6945907ea843694e7c2a7049",
       "login": "support4@mail.com",
-      "password": "$2a$10$Kiy3OQ2A8ddCYiphCgSU9.iMUHAn4auTaS.zj.B9BmWaYJD962ZR6",
+      "password": "$2a$10$tHl55pl46JidL7bacjw88.Tecs9voNEKB9Zso2EK/YavciRKpp7xS",
       "role": "SUPPORT",
-      "createDate": "2024-04-03T22:24:15.383",
-      "lastVisit": "2024-04-03T22:24:15.383"
+      "createDate": "2025-12-19T20:50:54.696",
+      "lastVisit": "2025-12-19T20:50:54.696"
     },
     {
-      "id": "660dace44853be52971c0db3",
-      "login": "support5@mail.com",
-      "password": "$2a$10$/tzKcihg4Us/4VtnrOIfC.cS9.9jCU9bksleCxTr8daSCTocovjbe",
-      "role": "SUPPORT",
-      "createDate": "2024-04-03T22:24:20.872",
-      "lastVisit": "2024-04-03T22:24:20.872"
+      "id": "69459087a843694e7c2a704a",
+      "login": "user1@mail.com",
+      "password": "$2a$10$LuPWlmXz38UcLK2PNlH7k.nB78PeoQSK6MjQ35n2nt97qfVyI9T8W",
+      "role": "USER",
+      "createDate": "2025-12-19T20:51:03.608",
+      "lastVisit": "2025-12-19T20:51:03.608"
+    },
+    {
+      "id": "6945908ea843694e7c2a704b",
+      "login": "user2@mail.com",
+      "password": "$2a$10$8cQHU7CmTo8ox5YViQhwxuynCZI4tUNv29nCqdX6gOjH7BT8gxaLG",
+      "role": "USER",
+      "createDate": "2025-12-19T20:51:10.235",
+      "lastVisit": "2025-12-19T20:51:10.235"
+    },
+    {
+      "id": "69459093a843694e7c2a704c",
+      "login": "user3@mail.com",
+      "password": "$2a$10$AibszCL699EOgKQqXXbA2uWExVpPawwbFObitD2iPhWl94fClTzRm",
+      "role": "USER",
+      "createDate": "2025-12-19T20:51:15.748",
+      "lastVisit": "2025-12-19T20:51:15.748"
     }
   ],
   "pageable": {
     "pageNumber": 0,
     "pageSize": 10,
-    "sort": [],
+    "sort": {
+      "empty": true,
+      "sorted": false,
+      "unsorted": true
+    },
     "offset": 0,
     "paged": true,
     "unpaged": false
   },
-  "totalPages": 4,
-  "totalElements": 35,
-  "last": false,
+  "totalPages": 1,
+  "totalElements": 10,
+  "last": true,
   "size": 10,
   "number": 0,
-  "sort": [],
+  "sort": {
+    "empty": true,
+    "sorted": false,
+    "unsorted": true
+  },
   "numberOfElements": 10,
   "first": true,
+  "empty": false
+}
+```
+
+##### Запрос с пользовательской пагинацией
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users?offset=2&limit=3
+```
+
+Response:
+
+```json
+{
+  "content": [
+    {
+      "id": "6945907ea843694e7c2a7049",
+      "login": "support4@mail.com",
+      "password": "$2a$10$tHl55pl46JidL7bacjw88.Tecs9voNEKB9Zso2EK/YavciRKpp7xS",
+      "role": "SUPPORT",
+      "createDate": "2025-12-19T20:50:54.696",
+      "lastVisit": "2025-12-19T20:50:54.696"
+    },
+    {
+      "id": "69459087a843694e7c2a704a",
+      "login": "user1@mail.com",
+      "password": "$2a$10$LuPWlmXz38UcLK2PNlH7k.nB78PeoQSK6MjQ35n2nt97qfVyI9T8W",
+      "role": "USER",
+      "createDate": "2025-12-19T20:51:03.608",
+      "lastVisit": "2025-12-19T20:51:03.608"
+    },
+    {
+      "id": "6945908ea843694e7c2a704b",
+      "login": "user2@mail.com",
+      "password": "$2a$10$8cQHU7CmTo8ox5YViQhwxuynCZI4tUNv29nCqdX6gOjH7BT8gxaLG",
+      "role": "USER",
+      "createDate": "2025-12-19T20:51:10.235",
+      "lastVisit": "2025-12-19T20:51:10.235"
+    }
+  ],
+  "pageable": {
+    "pageNumber": 2,
+    "pageSize": 3,
+    "sort": {
+      "empty": true,
+      "sorted": false,
+      "unsorted": true
+    },
+    "offset": 6,
+    "paged": true,
+    "unpaged": false
+  },
+  "totalPages": 4,
+  "totalElements": 10,
+  "last": false,
+  "size": 3,
+  "number": 2,
+  "sort": {
+    "empty": true,
+    "sorted": false,
+    "unsorted": true
+  },
+  "numberOfElements": 3,
+  "first": false,
   "empty": false
 }
 ```
@@ -240,6 +453,8 @@ Response:
 ### POST-запросы:
 
 #### create(@RequestBody UserCreateDto userCreateDto)
+
+##### Успешное создание
 
 Request:
 
@@ -251,9 +466,9 @@ Body:
 
 ```json
 {
-  "login": "admin10@mail.com",
-  "password": "admin10@mail.com",
-  "passwordConfirm": "admin10@mail.com",
+  "login": "admin1@mail.com",
+  "password": "admin1@mail.com",
+  "passwordConfirm": "admin1@mail.com",
   "role": "ADMIN"
 }
 ```
@@ -262,18 +477,76 @@ Response:
 
 ```json
 {
-  "id": "6610066f38bc1b1c4d213fd5",
-  "login": "admin10@mail.com",
-  "password": "admin10@mail.com",
+  "id": "6945530dd6e294613a55af49",
+  "login": "admin1@mail.com",
+  "password": "$2a$10$Iz2/ME9tA9S8bmllxdiKYeecx2MT1.9Tw8RBC4Jpf.tzzB6FwBQ3O",
   "role": "ADMIN",
-  "createDate": "2024-04-05T17:10:54.998591",
-  "lastVisit": "2024-04-05T17:10:54.999489"
+  "createDate": "2025-12-19T16:28:45.268237",
+  "lastVisit": "2025-12-19T16:28:45.268281"
+}
+```
+
+##### Повторное создание
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users
+```
+
+Body:
+
+```json
+{
+  "login": "admin1@mail.com",
+  "password": "admin1@mail.com",
+  "passwordConfirm": "admin1@mail.com",
+  "role": "ADMIN"
+}
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "Username is exists",
+  "errorCode": 409
+}
+```
+
+##### Не подтвержден пароль
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users
+```
+
+Body:
+
+```json
+{
+  "login": "admin3@mail.com",
+  "password": "admin1@mail.com",
+  "passwordConfirm": "admin3@mail.com",
+  "role": "ADMIN"
+}
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "Passwords do not match",
+  "errorCode": 400
 }
 ```
 
 ### PUT-запросы:
 
 #### updatePassword(@RequestBody PasswordUpdateDto dto)
+
+##### Успешное обновление
 
 Request:
 
@@ -285,10 +558,10 @@ Body:
 
 ```json
 {
-  "login": "support1@mail.com",
-  "oldPassword": "support1@mail.com",
-  "newPassword": "support1@mail.com1",
-  "confirmPassword": "support1@mail.com1"
+  "login": "admin1@mail.com",
+  "oldPassword": "admin1@mail.com",
+  "newPassword": "adminNew@mail.com1",
+  "confirmPassword": "adminNew@mail.com1"
 }
 ```
 
@@ -296,42 +569,164 @@ Response:
 
 ```json
 {
-  "id": "660daccb4853be52971c0daf",
-  "login": "support1@mail.com",
-  "password": "$2a$10$F1t3OC/.LyZ9WquyDYFcHeZSXs/gy1Snmpz5RqKQPM8741XuqR4mu",
-  "role": "SUPPORT",
-  "createDate": "2024-04-03T22:23:55.703",
-  "lastVisit": "2024-04-05T01:29:28.875"
+  "id": "6945530dd6e294613a55af49",
+  "login": "admin1@mail.com",
+  "password": "$2a$10$p8R.vLXupfMQDG9/ukN/7exIf.rCP0UDNgUGh1rhDeM1KUhWpyNMm",
+  "role": "ADMIN",
+  "createDate": "2025-12-19T16:28:45.268",
+  "lastVisit": "2025-12-19T16:28:45.268"
 }
 ```
 
-Error:
+##### Пользователь не найден
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/password
+```
+
+Body:
+
+```json
+{
+  "login": "admin12@mail.com",
+  "oldPassword": "admin1@mail.com",
+  "newPassword": "adminNew@mail.com1",
+  "confirmPassword": "adminNew@mail.com1"
+}
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "User with lastname not found: admin12@mail.com",
+  "errorCode": 404
+}
+```
+
+##### Не верный текущий пароль
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/password
+```
+
+Body:
+
+```json
+{
+  "login": "admin1@mail.com",
+  "oldPassword": "admin12@mail.com",
+  "newPassword": "adminNew@mail.com1",
+  "confirmPassword": "adminNew@mail.com1"
+}
+```
+
+Response:
 
 ```json
 {
   "errorMessage": "Incorrect old password",
-  "errorCode": 500
+  "errorCode": 400
+}
+```
+
+##### Одинаковые новый и старый пароли
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/password
+```
+
+Body:
+
+```json
+{
+  "login": "admin1@mail.com",
+  "oldPassword": "admin1@mail.com",
+  "newPassword": "admin1@mail.com1",
+  "confirmPassword": "admin1@mail.com1"
+}
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "New password must be different from the old one",
+  "errorCode": 400
+}
+```
+
+##### Новый пароль и его подтверждение не совпали
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/password
+```
+
+Body:
+
+```json
+{
+  "login": "admin10@mail.com",
+  "oldPassword": "adminNew@mail.com",
+  "newPassword": "admin10@mail.com",
+  "confirmPassword": "adminNew@mail.com"
+}
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "Password and confirmation do not match",
+  "errorCode": 400
 }
 ```
 
 #### updateLastVisit(@PathVariable("login") String login)
 
+##### Успешный запрос
+
 Request:
 
 ```http request
-http://localhost:8081/api/v1/users/support1@mail.com
+http://localhost:8081/api/v1/users/admin1@mail.com
 ```
 
 Response:
 
 ```json
 {
-  "id": "660daccb4853be52971c0daf",
-  "login": "support1@mail.com",
-  "password": "$2a$10$m6Co2AL9e./9RJcpKt0AYO9giHC245L/sgoenPLWgm9GjK3oNhnXG",
-  "role": "SUPPORT",
-  "createDate": "2024-04-03T22:23:55.703",
-  "lastVisit": "2024-04-05T20:46:45.591914"
+  "id": "6945530dd6e294613a55af49",
+  "login": "admin1@mail.com",
+  "password": "$2a$10$p8R.vLXupfMQDG9/ukN/7exIf.rCP0UDNgUGh1rhDeM1KUhWpyNMm",
+  "role": "ADMIN",
+  "createDate": "2025-12-19T16:28:45.268",
+  "lastVisit": "2025-12-19T22:50:29.639101"
+}
+```
+
+##### Отсутствует пользователь
+
+Request:
+
+```http request
+http://localhost:8081/api/v1/users/admin12@mail.com
+```
+
+Response:
+
+```json
+{
+  "errorMessage": "User not found with login: admin12@mail.com",
+  "errorCode": 404
 }
 ```
 
@@ -340,4 +735,4 @@ Response:
 Не возвращают ничего:
 
 - delete(@PathVariable("login") String login, @RequestHeader("Authorization") String auth)
-- deleteAll(@RequestBody List<UserDto> list)
+- deleteAll(@RequestBody List<String> list)
